@@ -46,6 +46,7 @@ void production(int* input, int size, int nt)
 	int tn[size];  // place to store thread numbers (to pass into pthread_create)
 	int sums[size];
 	int end = 0;  // if end of input reached
+	int curr_threads = 0;  // counter for current threads running
 	input_g = input;  // make input global
 	sums_g = sums;  // make sums global
 	pos_g = 0;
@@ -56,10 +57,12 @@ void production(int* input, int size, int nt)
 		{  // create (nt) threads
 			tn[i] = (i + 1);
 			pthread_create(&threads[i], NULL, threadFunction, (void*) &tn[i]);  // (i + 1) is the thread number (in order of creation)
+			curr_threads++;
 		}
-		for(int i = 0; i < size; i++)
+		for(int i = 0; i < curr_threads; i++)
 		{  // don't stop until all threads are done executing
 			pthread_join(threads[i], NULL);
+			curr_threads--;
 		}
 	} else
 	{  // if we need to reuse threads
@@ -74,23 +77,24 @@ void production(int* input, int size, int nt)
 					break;
 				}
 				pthread_create(&threads[i], NULL, threadFunction, (void*) &tn[i]);  // (i + 1) is the thread number (in order of creation)
+				curr_threads++;
 			}
-			for(int i = 0; i < nt; i++)
+			for(int i = 0; i < curr_threads; i++)
 			{  // don't stop until all threads are done executing
 				pthread_join(threads[i], NULL);
+				curr_threads--;
 			}
 			pos_g += nt;  // start 1 after the last thread, reuse threads
 		}
 	}
-
 	printSums(size);
 }
 
 int main()
 {
-        int input[4] = {1, 2, 3, 4};
-        int size = 4;
-        int nt = 1;
+        int input[32] = {793, 283, 735, 755, 637, 266, 826, 175, 107, 651, 466, 949, 754, 60, 52, 948, 3, 263, 592, 511, 316, 784, 45, 139, 398, 545, 976, 394, 38, 403, 689, 182};
+        int size = 32;
+        int nt = 4;
 
         production(input, size, nt);
 
