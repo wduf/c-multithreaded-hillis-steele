@@ -45,8 +45,8 @@ int* mid_g;  // global sums in the middle of each step
 int* sums_g;  // global prefix sums array
 int size_g;  // global size
 int nt_g;  // global number of threads
-int t_ready_g = 0;  // number of threads ready to move on
-int t_ready2_g = 0;  // another barrier after memcpy()
+int t_ready_g = 0;  // cond var for barrier 1
+int t_ready2_g = 0;  // cond var for barrier 2
 
 // FUNCTIONS:
 
@@ -84,26 +84,24 @@ void* threadFunction(void* arg)
 	int step = 1;  // step/row counter
 	int jump = 1;  // jump size for this step, first jump is 2^0 = 1
 	int loops;  // how many loops this thread needs to take this loop
-	int input_set = 0;  // counter for if input has been set this loop
 	int index;  // variable to decrease overall calculations
 
-	printf("thread%d in threadFunction\n", tn);
 	while(jump < size_g)
-	{	
-		printf("!! thread%d: jump = %d\n", tn, jump);
+	{
 		loops = calculateLoops(tn, jump);
 		for(int i = 0; i < loops; i++)
 		{  // counts loops
 			index = (jump + (tn - 1) + (i * nt_g));
-			printf("thread%d: mid[%d] = (input[%d]) %d + (input[%d]) %d\n", tn, index, index, input_g[index], (index - jump), input_g[index - jump]); fflush(stdout);
-			printf("thread%d: this is input[1] -> %d\n", tn, input_g[1]);
 			mid_g[index] = (input_g[index] + input_g[index - jump]);
 		}
-		t_ready_g++;  // thread is ready to move on
+		pthread_mutex_lock(&mutex);  // lock so two threads cannot change value at same time (yes this happened in our testing)
+		t_ready_g++;  // thread is ready to memcpy()
+		pthread_mutex_unlock(&mutex);
 		while(t_ready_g < (step * nt_g));  // barrier
-		printf("-> thread%d: moving on\n", tn); fflush(stdout);
 		memcpy(input_g, mid_g, (size_g * sizeof(int)));
-		t_ready2_g++;
+		pthread_mutex_lock(&mutex);  // lock so two threads cannot change value at same time (yes this happened in our testing)
+		t_ready2_g++;  // thread is ready to move on to next step
+		pthread_mutex_unlock(&mutex);
 		while(t_ready2_g < (step * nt_g));
 		step++;
 		jump = (1 << (step - 1));
@@ -117,7 +115,6 @@ void* threadFunction(void* arg)
 		}
 	}
 
-	printf("thread%d exiting threadFunction\n", tn);
 	return 0;
 }
 
@@ -140,8 +137,8 @@ void production(int* input, int size, int nt)
 
 int main()
 {
-	int input[8] = {1, 1, 1, 1, 1, 1, 1, 1};  // input array
-	int size = 8;  // size of input array
+	int input[20] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};  // input array
+	int size = 20;  // size of input array
 	int nt = 4;  // number of threads
 	int sums[size];
 	int mid[size];
