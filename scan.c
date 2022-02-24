@@ -118,7 +118,7 @@ void* threadFunction(void* par)
 		memcpy(input_g, mid_sums_g, sizeof(mid_sums_g));
 		step++;	
 		jump = pow(2, step);
-		//printf("thread%d: moving to jump = %d\n", tn, jump); fflush(stdout);
+		printf("thread%d: moving to jump = %d\n", tn, jump); fflush(stdout);
 	}
 	for(int i = 0; i < jump; i++)
 	{  // set values in prefix sum array
