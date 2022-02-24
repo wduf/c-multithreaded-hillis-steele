@@ -39,13 +39,14 @@
 
 // GLOBALS:
 
-pthread_mutex_t mutex_lock;  // mutually exclusive lock
+pthread_mutex_t mutex;
 int* input_g;  // global input
 int* mid_g;  // global sums in the middle of each step
 int* sums_g;  // global prefix sums array
 int size_g;  // global size
 int nt_g;  // global number of threads
 int t_ready_g = 0;  // number of threads ready to move on
+int t_ready2_g = 0;  // another barrier after memcpy()
 
 // FUNCTIONS:
 
@@ -101,14 +102,9 @@ void* threadFunction(void* arg)
 		t_ready_g++;  // thread is ready to move on
 		while(t_ready_g < (step * nt_g));  // barrier
 		printf("-> thread%d: moving on\n", tn); fflush(stdout);
-		pthread_mutex_lock(&mutex_lock);  // lock
-		if(input_set < step)
-		{
-			printf("** thread%d: copying mid to input\n", tn); fflush(stdout);
-			memcpy(input_g, mid_g, (size_g * sizeof(int)));
-			input_set++;
-		}
-		pthread_mutex_unlock(&mutex_lock);
+		memcpy(input_g, mid_g, (size_g * sizeof(int)));
+		t_ready2_g++;
+		while(t_ready2_g < (step * nt_g));
 		step++;
 		jump = (1 << (step - 1));
 	}
@@ -144,8 +140,8 @@ void production(int* input, int size, int nt)
 
 int main()
 {
-	int input[11] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};  // input array
-	int size = 11;  // size of input array
+	int input[8] = {1, 1, 1, 1, 1, 1, 1, 1};  // input array
+	int size = 8;  // size of input array
 	int nt = 4;  // number of threads
 	int sums[size];
 	int mid[size];
