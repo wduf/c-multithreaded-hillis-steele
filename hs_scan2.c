@@ -35,7 +35,7 @@
 #include <pthread.h>
 #include <math.h>
 #include <string.h>
-#include <unistd.h>
+#include <assert.h>
 
 // GLOBALS:
 
@@ -120,7 +120,7 @@ void* threadFunction(void* arg)
 
 void production(int* input, int size, int nt)
 {
-	pthread_t threads[size_g];
+	pthread_t* threads = (pthread_t*) malloc(size_g * sizeof(pthread_t));
 	int tn[nt_g];  // array to store thread numbers (ids)
 
 	for(int i = 0; i < nt; i++)
@@ -133,6 +133,7 @@ void production(int* input, int size, int nt)
 		pthread_join(threads[i], NULL);
 	}
 	printSums();
+	free(threads);
 }
 
 int main()
