@@ -1,4 +1,4 @@
-// PICTURE OF ME
+// PICTURE OF TA GUIN
 
 /*⠀
 ⣿⣿⣿⣿⣿⣿⣿⣿⡿⠿⠛⠛⠛⠋⠉⠈⠉⠉⠉⠉⠛⠻⢿⣿⣿⣿⣿⣿
@@ -36,16 +36,20 @@
 #include <math.h>
 #include <string.h>
 #include <unistd.h>
+#include <assert.h>
+
 
 // GLOBALS:
+#define MAX_LINE_SIZE 256
 
-pthread_mutex_t mutex_lock;  // mutually exclusive lock for threads
-int* ready_g;  // global ready states for threads
-int* input_g; // global input array
-int* sums_g;  // global prefix sum array
-int* mid_sums_g;  // global sum in between steps array
-int size_g;  // global size of input
+pthread_mutex_t mutex;
+int* input_g;  // global input
+int* mid_g;  // global sums in the middle of each step
+int* sums_g;  // global prefix sums array
+int size_g;  // global size
 int nt_g;  // global number of threads
+int t_ready_g = 0;  // cond var for barrier 1
+int t_ready2_g = 0;  // cond var for barrier 2
 
 // FUNCTIONS:
 
@@ -77,49 +81,36 @@ void printSums()
 	}
 }
 
-int allThreadsReady()
+void* threadFunction(void* arg)
 {
-	int R = 1;  // return value
-	
-	for(int i = 0; i < nt_g; i++)
-	{
-		if(!ready_g[i])
-		{  // if a thread is not ready
-			R = 0;
-			break;
-		}
-	}
-
-	return R;
-}
-
-void* threadFunction(void* par)
-{
-	int tn = *((long*) par);  // thread number
-	int step = 0;  // step/row counter
-	int jump = 1;  // how many numbers to jump forward to calculate current sum, start at 1 because 2^0 = 1
-	int loops = 0;  // total loops this thread needs to perform this step
+	int tn = *((long*) arg);  // this thread's number
+	int step = 1;  // step/row counter
+	int jump = 1;  // jump size for this step, first jump is 2^0 = 1
+	int loops;  // how many loops this thread needs to take this loop
+	int index;  // variable to decrease overall calculations
 
 	while(jump < size_g)
-	{  // while there is another sum to be calculated
-		printf("new while in thread%d\n", tn);
+	{
+		//printf("In while \n"); fflush(stdout);
 		loops = calculateLoops(tn, jump);
 		for(int i = 0; i < loops; i++)
-		{  // add input values
-			int index = (jump + (tn - 1) + (i * nt_g));
-			printf("thread%d: in first for: sums[%d] = (input[%d]) %d + (input[%d]) %d\n", tn, index, index, input_g[index], (index - jump), input_g[index - jump]);
-			mid_sums_g[index] = (input_g[index] + input_g[index - jump]);
+		{  // counts loops
+			index = (jump + (tn - 1) + (i * nt_g));
+			mid_g[index] = (input_g[index] + input_g[index - jump]);
 		}
-		ready_g[tn - 1] = 1;
-		printf("thread%d waiting...\n", tn);
-		while(!allThreadsReady()); // barrier
-		printf("moving forward\n");
-		ready_g[tn - 1] = 0;
-		memcpy(input_g, mid_sums_g, sizeof(mid_sums_g));
-		step++;	
-		jump = pow(2, step);
-		printf("thread%d: moving to jump = %d\n", tn, jump); fflush(stdout);
+		pthread_mutex_lock(&mutex);  // lock so two threads cannot change value at same time (yes this happened in our testing)
+		t_ready_g++;  // thread is ready to memcpy()
+		pthread_mutex_unlock(&mutex);
+		while(t_ready_g < (step * nt_g));  // barrier
+		memcpy(input_g, mid_g, (size_g * sizeof(int)));
+		pthread_mutex_lock(&mutex);  // lock so two threads cannot change value at same time (yes this happened in our testing)
+		t_ready2_g++;  // thread is ready to move on to next step
+		pthread_mutex_unlock(&mutex);
+		while(t_ready2_g < (step * nt_g));
+		step++;
+		jump = (1 << (step - 1));
 	}
+	//printf("After while\n"); fflush(stdout);
 	for(int i = 0; i < jump; i++)
 	{  // set values in prefix sum array
 		if(sums_g[i] != input_g[i])
@@ -128,55 +119,82 @@ void* threadFunction(void* par)
 			sums_g[i] = input_g[i];
 		}
 	}
-	
+
 	return 0;
 }
 
-/*
-	input = int array
-	size = size of input
-	nt = number of threads
-*/
 void production(int* input, int size, int nt)
 {
-	pthread_t threads[nt];  // array to store thread
-	int tn[nt];
+	//printf("In production\n"); fflush(stdout);
+	pthread_t* threads = (pthread_t*)malloc(size_g*sizeof(pthread_t)); 
+	//printf("After pthread_t threads\n"); fflush(stdout);
+	int tn[nt_g];  // array to store thread numbers (ids)
+	//printf("After int tn[nt_g]\n"); fflush(stdout);
+	
 
 	for(int i = 0; i < nt; i++)
 	{  // create (nt) threads
-		tn[i] = (i + 1);
+		//printf("In production for loop\n"); fflush(stdout);
+		tn[i] = (i + 1);  // assign id to each thread
 		pthread_create(&threads[i], NULL, threadFunction, (void*) &tn[i]);
-		printf("thread%d created\n", tn[i]);
 	}
 	for(int i = 0; i < nt; i++)
 	{  // wait for all threads to finish executing
 		pthread_join(threads[i], NULL);
 	}
 	printSums();
-
-	return;
 }
 
-int main()
+void read_input_vector(const char* filename, int n, int* array)
 {
-	int input[4] = {1, 2, 3, 4};  // input array
-	int size = 4;  // size of input array
-	int nt = 2;  // number of threads
-	int sums[size];  // array of prefix sums
-	int ready[nt];  // array of booleans for if each thread is ready to move on
+  FILE *fp;
+  char *line = malloc(MAX_LINE_SIZE+1);
+  size_t len = MAX_LINE_SIZE;
+  ssize_t read;
 
-	ready_g = ready;  // make ready global
-	input_g = input;  // make input global
-	sums_g = sums;  // make sums global
-	mid_sums_g = input;  // make mid_sums global
-	memcpy(mid_sums_g, input, sizeof(input));
-	size_g = size;  // make size global
-	nt_g = nt;  // make nt global
+  fp = strcmp(filename, "-") ? fopen(filename, "r") : stdin;
 
-	for(int i = 0; i < nt; i++)
-	{  // initialize ready_g
-		ready_g[i] = 0;  // by default, threads aren't ready to move on yet
-	}
+  assert(fp != NULL && line != NULL);
+
+  int index = 0;
+
+  while ((read = getline(&line, &len, fp)) != -1)
+  {
+    array[index] = atoi(line);
+    index++;
+  }
+
+  free(line);
+  fclose(fp);
+}
+
+int main(int argc, char** argv)
+{
+	int nt = atoi(argv[3]);
+	char* filename = argv[1];
+	int size = atoi(argv[2]);
+
+	if(size < 2)
+	exit(EXIT_FAILURE);
+
+	int *input= malloc(sizeof(int) * (size + 1));
+
+	//printf("This is before vector\n"); fflush(stdout);
+	read_input_vector(filename, size, input);
+	//printf("This is after vector\n"); fflush(stdout);
+	
+	int *sums = malloc(sizeof(int) * (size + 1));
+	int *mid = malloc(sizeof(int) * (size + 1));
+	//printf("After sums and mid malloc\n"); fflush(stdout);
+
+	input_g = input;
+	size_g = size;
+	nt_g = nt;
+	sums_g = sums;
+	mid_g = mid;
+	memcpy(mid_g, input_g, (size_g * sizeof(int)));  // set mid_g to input
+	memcpy(sums_g, input_g, (size_g * sizeof(int)));  // set sums_g to input
+	//printf("After memcpy\n"); fflush(stdout);
 
 	production(input, size, nt);
 
