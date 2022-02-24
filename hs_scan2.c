@@ -91,7 +91,7 @@ void* threadFunction(void* arg)
 		loops = calculateLoops(tn, jump);
 		for(int i = 0; i < loops; i++)
 		{  // counts loops
-			index = (jump + (tn - 1) + (i * nt_g));
+			index = ((size_g - 1) - (tn - 1) - (nt_g * i));
 			mid_g[index] = (input_g[index] + input_g[index - jump]);
 		}
 		pthread_mutex_lock(&mutex);  // lock so two threads cannot change value at same time (yes this happened in our testing)
@@ -106,7 +106,7 @@ void* threadFunction(void* arg)
 		step++;
 		jump = (1 << (step - 1));
 	}
-	for(int i = 0; i < jump; i++)
+	for(int i = 0; i < size_g; i++)
 	{  // set values in prefix sum array
 		if(sums_g[i] != input_g[i])
 		{
@@ -137,9 +137,9 @@ void production(int* input, int size, int nt)
 
 int main()
 {
-	int input[20] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};  // input array
+	int input[20] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 , 1, 1, 1, 1, 1, 1, 1, 1};  // input array
 	int size = 20;  // size of input array
-	int nt = 4;  // number of threads
+	int nt = 2;  // number of threads
 	int sums[size];
 	int mid[size];
 
