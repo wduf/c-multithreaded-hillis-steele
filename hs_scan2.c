@@ -1,7 +1,7 @@
 // PICTURE OF TA GUIN
 
 /*⠀
-⣿⣿⣿⣿⣿⣿⣿⣿⡿⠿⠛⠛⠛⠋⠉⠈⠉⠉⠉⠉⠛⠻⢿⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⣿⣿⣿⡿⠿⠛⠛⠛⠋⠉⠈⠉⠉⠉⠉⠛⠻⢿⣿⣿⣿⣿⣿
 ⣿⣿⣿⣿⣿⡿⠋⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠛⢿⣿⣿⣿⣿
 ⣿⣿⣿⣿⡏⣀⠀⠀⠀⠀⠀⠀⠀⣀⣤⣤⣤⣄⡀⠀⠀⠀⠀⠀⠀⠀⠙⢿⣿⣿
 ⣿⣿⣿⢏⣴⣿⣷⠀⠀⠀⠀⠀⢾⣿⣿⣿⣿⣿⣿⡆⠀⠀⠀⠀⠀⠀⠀⠈⣿⣿
@@ -95,7 +95,7 @@ void* threadFunction(void* arg)
 		{  // counts loops
 			index = (jump + (tn - 1) + (i * nt_g));
 			printf("thread%d: mid[%d] = (input[%d]) %d + (input[%d]) %d\n", tn, index, index, input_g[index], (index - jump), input_g[index - jump]); fflush(stdout);
-			printf("thread%d: this is input[1] -> %d\n", input_g[1]);
+			printf("thread%d: this is input[1] -> %d\n", tn, input_g[1]);
 			mid_g[index] = (input_g[index] + input_g[index - jump]);
 		}
 		t_ready_g++;  // thread is ready to move on
@@ -144,9 +144,9 @@ void production(int* input, int size, int nt)
 
 int main()
 {
-	int input[4] = {1, 2, 3, 4};  // input array
-	int size = 4;  // size of input array
-	int nt = 2;  // number of threads
+	int input[11] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};  // input array
+	int size = 11;  // size of input array
+	int nt = 4;  // number of threads
 	int sums[size];
 	int mid[size];
 
