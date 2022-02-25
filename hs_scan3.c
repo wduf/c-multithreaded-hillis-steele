@@ -132,9 +132,9 @@ void production(int* input, int* mids, int* sums, int* size, int* n_t, int* t_r)
 
 int main()
 {
-	int input[2] = {1, 1};  // input array
-	int size = 2;  // size of input
-	int n_t = 2;  // number of threads
+	int input[32] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};  // input array
+	int size = 16;  // size of input
+	int n_t = 4;  // number of threads
 	int* mids = (int*) malloc(size * sizeof(int));
 	int* sums = (int*) malloc(size * sizeof(int));
 	for(int i = 0; i < size; i++)
