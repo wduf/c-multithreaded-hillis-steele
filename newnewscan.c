@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <pthread.h>
+#include <unistd.h>
 
 // GLOBALS:
 
@@ -32,7 +33,6 @@ void* threadFunction(void* arg)
 
 	for(;;)
 	{  // infinite loop we will break out of
-		//printf("%d: new for, loop = %d\n", t_n, loop); fflush(stdout);
 		index = (pos + (t_n - 1));
 		if(index >= size_g)
 		{  // if index is out of bounds
@@ -42,7 +42,7 @@ void* threadFunction(void* arg)
 			//printf("*** %d: break\n", t_n); fflush(stdout);
 			break;  // this thread has done all of its calculations
 		}
-		sums_g[index] = sums_g[pos - 1];  // set this sum to the last sum of previous loop]
+		sums_g[index] = sums_g[pos - 1];  // set this sum to the last sum of previous loop
 		for(int i = 0; i < t_n; i++)
 		{  // add up sums 
 			sums_g[index] += input_g[pos + i];
@@ -50,16 +50,17 @@ void* threadFunction(void* arg)
 		pthread_mutex_lock(&mutex_lock);
 		t_ready_g++;
 		pthread_mutex_unlock(&mutex_lock);
-		//printf("%d: waiting, %d ready on loop %d\n", t_n, t_ready_g, loop); fflush(stdout);
 		while(t_ready_g < (nt_g * loop)); // barrier
 		pos += nt_g;
 		loop++;
 	}
+
+	return 0;
 }
 
 void production(int* input, int size, int nt)
 {
-	pthread_t* threads = (pthread_t*) malloc(sizeof(pthread_t));
+	pthread_t* threads = (pthread_t*) malloc(size * sizeof(pthread_t));
 	int t_ns[size];  // thread numbers/ids
 
 	for(int i = 0; i < nt; i++)
@@ -78,8 +79,8 @@ void production(int* input, int size, int nt)
 
 int main()
 {
-	int input[21] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
-	int size = 21;
+	int input[32] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, };
+	int size = 32;
 	int nt = 4;
 
 	int sums[size];  // put on heap
