@@ -7,7 +7,12 @@
 #include <unistd.h>
 #include <assert.h>
 
+// DEFINES:
+
+#define MAX_LINE_SIZE 256
+
 // STRUCTS:
+
 
 typedef struct __args_t
 {
@@ -57,44 +62,27 @@ void* threadFunction(void* arg)
 
 	while(jump < *args.size)
 	{
-		printf("%d: jump = %d\n", args.t_n, jump); fflush(stdout);
 		jumps_left = (*args.size - jump);
-		printf("%d: jumps_left starts at %d\n", args.t_n, jumps_left); fflush(stdout);
 		index = ((*args.size - 1) - (args.t_n - 1));
-		printf("%d: index1 = %d\n", args.t_n, index); fflush(stdout);
 		while(jumps_left >= *args.n_t)
 		{  // if this thread is responsible for another jump
 			args.mids[index] = (args.input[index] + args.input[index - jump]);
-			printf("%d: setting mid[%d] = %d, ", args.t_n, index, args.mids[index]); fflush(stdout);
-			printf("input[%d] = %d, input[%d] = %d\n", index, args.mids[index], index - jump, args.mids[index - jump]);
 			jumps_left -= *args.n_t;
-			printf("%d: now jumps left = %d\n", args.t_n, jumps_left); fflush(stdout);
 			index -= *args.n_t;
-			
 		}
-		//index -= *args.n_t;
-		printf("%d: checking edge case, index here = %d\n", args.t_n, index); fflush(stdout);
 		if(jumps_left >= args.t_n)
 		{  // edge case
-			printf("%d: %d >= %d\n", args.t_n, jumps_left, args.t_n);
-			printf("%d: mids[%d] = index[%d] + index[%d]\n", args.t_n, index, index, index - jump);
 			args.mids[index] = (args.input[index] + args.input[index - jump]);
-			printf("%d: setting mid[%d] = %d\n", args.t_n, index, args.mids[index]); fflush(stdout);
 		}
 		pthread_mutex_lock(&lock);
-		//printf("%d: locked, before t_r = %d\n", args.t_n, *args.t_r); fflush(stdout);
 		*args.t_r += 1;
 		pthread_mutex_unlock(&lock);
-		//printf("%d: waiting..., t_r = %d\n", args.t_n, *args.t_r); fflush(stdout);
 		while(*args.t_r < (step * *args.n_t));  // barrier
-		//printf("%d: before, input[0] = %d\n", args.t_n, args.input[0]); fflush(stdout);
 		memcpy(args.input, args.mids, (*args.size * sizeof(int)));
-		//printf("-> %d: moving on\n", args.t_n);
 		pthread_mutex_lock(&lock);
-		//printf("%d: locked, before t_r = %d\n", args.t_n, *args.t_r); fflush(stdout);
 		*args.t_r2 += 1;
 		pthread_mutex_unlock(&lock);
-		while(*args.t_r2 < (step * *args.n_t));
+		while(*args.t_r2 < (step * *args.n_t));  // barrier 2
 		step++;
 		jump = (1 << (step - 1));
 	}
@@ -102,7 +90,6 @@ void* threadFunction(void* arg)
 	{  // set values in prefix sum array
 		if(args.sums[i] != args.input[i])
 		{
-			printf("%d: sets sums[%d] to %d\n", args.t_n, i, args.input[i]); fflush(stdout);
 			args.sums[i] = args.input[i];
 		}
 	}
@@ -121,26 +108,66 @@ void production(int* input, int* mids, int* sums, int* size, int* n_t, int* t_r,
 		- use init in pthread_create, but i'm not sure how the address of this would work (return a static?)
 	*/
 
-	//printf("got here\n"); fflush(stdout);
 	for(int i = 0; i < *n_t; i++)
 	{  // create threads
 		initArgs(&args[i], input, mids, sums, size, n_t, (i + 1), t_r, t_r2);
 		pthread_create(&threads[i], NULL, threadFunction, (void*) &args[i]);
 	}
-	//printf("got here\n"); fflush(stdout);
 	for(int i = 0; i < *n_t; i++)
 	{  // wait for threads to finish executing
 		pthread_join(threads[i], NULL);
 	}
 	printSums(input, *size);  // maybe make it so we print as we go along
-	//printf("got here\n");
+
+	return;
 }
 
-int main()
+void read_input_vector(const char* filename, int n, int* array)
 {
-	int input[32] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};  // input array
-	int size = 16;  // size of input
-	int n_t = 8;  // number of threads
+	FILE *fp;
+	char *line = malloc(MAX_LINE_SIZE+1);
+	size_t len = MAX_LINE_SIZE;
+	ssize_t read;
+
+	fp = strcmp(filename, "-") ? fopen(filename, "r") : stdin;
+
+	assert(fp != NULL && line != NULL);
+
+	int index = 0;
+
+	while ((read = getline(&line, &len, fp)) != -1)
+	{
+		array[index] = atoi(line);
+		index++;
+	}
+
+	free(line);
+	fclose(fp);
+}
+
+/*
+	this program shits itself if n_t >= (0.5 * size)
+*/
+int main(int argc, char** argv)
+{
+	// starter code
+	
+	char* filename = argv[1];
+	int size = atoi(argv[2]);
+	int n_t = atoi(argv[3]);
+
+	if(size < 2)
+	{
+		exit(EXIT_FAILURE);
+	}
+
+	int* input= malloc(size * sizeof(int));
+
+	read_input_vector(filename, size, input);
+
+	
+	// end of starter code
+	
 	int* mids = (int*) malloc(size * sizeof(int));
 	int* sums = (int*) malloc(size * sizeof(int));
 	for(int i = 0; i < size; i++)
@@ -149,8 +176,9 @@ int main()
 		sums[i] = 0;
 	}
 	memcpy(mids, input, (size * sizeof(int)));
+		
 	int t_r = 0;  // counter for threads ready
-	int t_r2 = 0;  // counter for second barrier
+	int t_r2 = 0;  // for second barrier
 
 	production(input, mids, sums, &size, &n_t, &t_r, &t_r2);
 
