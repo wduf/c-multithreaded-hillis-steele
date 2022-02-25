@@ -11,7 +11,8 @@ static int nt_g;
 int* input_g;
 int* mids_g;
 int* sums_g;
-int tr_g, set_g = 0;
+int tr_g = 0;
+int set_g = 0;
 void printSums(int size){
 	for(int i = 0; i < size; i++){
 		printf("%d\n", sums_g[i]);
@@ -43,8 +44,7 @@ void* threadFunction(void* arg)
 	int tn = *((long*) arg);
 	int step = 1;
 	int jump = 1;
-	int jumps_left;
-	int index;
+	int jumps_left, index;
 	while(jump < size_g){
 		index = ((size_g - 1) - (tn - 1));
 		for(jumps_left = (size_g - jump); jumps_left >= nt_g; jumps_left -= nt_g){
