@@ -53,8 +53,7 @@ void* threadFunction(void* arg)
 	int jump = 1;  // jump size, 2^0 = 1
 	int jumps_left;  // variable to decrease total calculations
 	int index;  // variable to decrease total calculations
-	int index2;  // variable to decrease total calculations
-	int i;  // accumulator for for loop that we need for edge case
+	int i = 0;  // accumulator for for loop that we need for edge case
 
 	while(jump < *args.size)
 	{
@@ -62,26 +61,24 @@ void* threadFunction(void* arg)
 		jumps_left = (*args.size - jump);
 		printf("%d: jumps_left starts at %d\n", args.t_n, jumps_left); fflush(stdout);
 		index = ((*args.size - 1) - (args.t_n - 1));
-		for(i = 0; jumps_left >= *args.n_t; i++)
+		printf("%d: index1 = %d\n", args.t_n, index); fflush(stdout);
+		for(; jumps_left >= *args.n_t; i++)
 		{  // if this thread is responsible for another jump
-			index2 = (index - (i * *args.n_t));
-			//printf("%d: before: mid[%d] = %d\n", args.t_n, index2, args.mids[index2]);
-			printf("%d: input[%d] = %d, input[%d] = %d\n", args.t_n, index2, args.input[index2], (index2 - jump), args.input[index2 - jump]); fflush(stdout);
-			args.mids[index2] = (args.input[index2] + args.input[index2 - jump]);
-			printf("%d: after: mid[%d] = %d\n", args.t_n, index2, args.mids[index2]); fflush(stdout);
-			printf("decreasing jumps_left (%d) by %d\n", jumps_left, *args.n_t); fflush(stdout);
+			index -= (i * *args.n_t);
+			args.mids[index] = (args.input[index] + args.input[index - jump]);
+			printf("%d: setting mid[%d] = %d\n", args.t_n, index, args.mids[index]); fflush(stdout);
 			jumps_left -= *args.n_t;
 			printf("%d: now jumps left = %d\n", args.t_n, jumps_left); fflush(stdout);
 			
 		}
-		printf("%d: index2 = %d\n", args.t_n, index2);
+		index -= (i * *args.n_t);
 		printf("%d: checking edge case\n", args.t_n); fflush(stdout);
 		if(jumps_left >= args.t_n)
 		{  // edge case
 			printf("%d: %d >= %d\n", args.t_n, jumps_left, args.t_n);
-			args.mids[index2 - *args.n_t] = (args.input[index2 - *args.n_t] + args.input[index2 - *args.n_t - jump]);fflush(stdout);
-			printf("settings mid[%d] = input[%d] (%d) + input[%d] (%d)\n", index2 - *args.n_t, index2 - *args.n_t, args.input[index2 - *args.n_t], index2 -*args.n_t - jump, args.input[index2 - *args.n_t - jump]); fflush(stdout);
-			printf("%d: Edge after: mid[%d] = %d\n", args.t_n, index2 - *args.n_t, args.mids[index2 - *args.n_t]); fflush(stdout);
+			printf("%d: mids[%d] = index[%d] + index[%d]\n", args.t_n, index - (i * *args.n_t), index - (i * *args.n_t), index - (i * *args.n_t) - jump);
+			args.mids[index] = (args.input[index] + args.input[index - jump]);fflush(stdout);
+			printf("%d: setting mid[%d] = %d\n", args.t_n, index - (i * *args.n_t) - jump, args.mids[index - (i * *args.n_t) - jump]); fflush(stdout);
 		}
 		pthread_mutex_lock(&lock);
 		//printf("%d: locked, before t_r = %d\n", args.t_n, *args.t_r); fflush(stdout);
@@ -101,12 +98,10 @@ void* threadFunction(void* arg)
 	{  // set values in prefix sum array
 		if(args.sums[i] != args.input[i])
 		{
-			printf("%d sets sums[%d] to %d\n", args.t_n, i, args.input[i]); fflush(stdout);
+			printf("%d: sets sums[%d] to %d\n", args.t_n, i, args.input[i]); fflush(stdout);
 			args.sums[i] = args.input[i];
 		}
 	}
-
-	printf("%d: args values: %d, %d, %d, %p\n", args.t_n, *args.size, *args.n_t, args.t_n, args.t_r); fflush(stdout);
 
 	return 0;
 }
@@ -142,10 +137,9 @@ void production(int* input, int* mids, int* sums, int* size, int* n_t, int* t_r)
 */
 int main()
 {
-	int input[8] = {1, 1, 1, 1, 1, 1, 1, 1};  // input array
-	int size = 8;  // size of input
-	int n_t = 4;  // number of threads
-	int cond = 0;  // conditional variable for threads
+	int input[2] = {1, 1};  // input array
+	int size = 2;  // size of input
+	int n_t = 2;  // number of threads
 	int* mids = (int*) malloc(size * sizeof(int));
 	int* sums = (int*) malloc(size * sizeof(int));
 	for(int i = 0; i < size; i++)
