@@ -3,17 +3,15 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <pthread.h>
-#include <assert.c>
 
 // GLOBALS:
 
-pthread_mutex_t mutex;  // mutually exclusive lock
+pthread_mutex_t mutex_lock;  // mutually exclusive lock
 int* input_g;  // global input array
 int* sums_g;  // global prefix sum array
 int size_g;  // global size
 int nt_g;  // global number of threads
 int t_ready_g = 0;  // how many threads waiting at barrier
-int t_ready2_g = 0;
 
 // FUNCTIONS:
 
@@ -34,9 +32,14 @@ void* threadFunction(void* arg)
 
 	for(;;)
 	{  // infinite loop we will break out of
+		//printf("%d: new for, loop = %d\n", t_n, loop); fflush(stdout);
 		index = (pos + (t_n - 1));
 		if(index >= size_g)
 		{  // if index is out of bounds
+			pthread_mutex_lock(&mutex_lock);
+			t_ready_g++;  // so other threads can break through barrier
+			pthread_mutex_unlock(&mutex_lock);
+			//printf("*** %d: break\n", t_n); fflush(stdout);
 			break;  // this thread has done all of its calculations
 		}
 		sums_g[index] = sums_g[pos - 1];  // set this sum to the last sum of previous loop]
@@ -44,7 +47,10 @@ void* threadFunction(void* arg)
 		{  // add up sums 
 			sums_g[index] += input_g[pos + i];
 		}
+		pthread_mutex_lock(&mutex_lock);
 		t_ready_g++;
+		pthread_mutex_unlock(&mutex_lock);
+		//printf("%d: waiting, %d ready on loop %d\n", t_n, t_ready_g, loop); fflush(stdout);
 		while(t_ready_g < (nt_g * loop)); // barrier
 		pos += nt_g;
 		loop++;
@@ -72,9 +78,9 @@ void production(int* input, int size, int nt)
 
 int main()
 {
-	int input[14] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
-	int size = 14;
-	int nt = 2;
+	int input[21] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+	int size = 21;
+	int nt = 4;
 
 	int sums[size];  // put on heap
 	for(int i = 0; i < size; i++)
