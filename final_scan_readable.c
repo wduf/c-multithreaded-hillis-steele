@@ -124,7 +124,6 @@ void production(int* input, int size, int nt)
 	{  // create threads
 		tns[i] = (i + 1);
 		pthread_create(&threads[i], NULL, threadFunction, (void*) &tns[i]);
-		//printf("%d: created\n", tns[i]);
 	}
 	for(int i = 0; i < nt; i++)
 	{  // wait for threads to finish executing
