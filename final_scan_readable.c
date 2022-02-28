@@ -50,6 +50,7 @@ int* input_g;  // global input array
 int* mids_g;  // global middle sums array
 int* sums_g;  // global prefix sums array
 int tr = 0;  // counter for thready ready
+int set_g = 0;  // flag for setMids()
 
 // FUNCTIONS
 
@@ -67,11 +68,24 @@ void barrier()
 	tr++;
 	if(tr < nt_g)
 	{  // if not all threads ready
-		while(pthread_cond_wait(&cond, &lock) != 0);  // waiting
+		pthread_cond_wait(&cond, &lock);  // waiting
 	} else
 	{
 		tr = 0;
 		pthread_cond_broadcast(&cond);
+	}
+	pthread_mutex_unlock(&lock);
+
+	return;
+}
+
+void copyMids(int step)
+{  // memcpy mids to input (only one thread does this)
+	pthread_mutex_lock(&lock);
+	if(set_g!=step)
+	{
+		memcpy(input_g,mids_g,(size_g*sizeof(int)));
+		set_g++;
 	}
 	pthread_mutex_unlock(&lock);
 
@@ -101,7 +115,7 @@ void* threadFunction(void* arg)
 			mids_g[index] = (input_g[index] + input_g[index - jump]);
 		}
 		barrier();  // barrier 1
-		memcpy(input_g, mids_g, (size_g * sizeof(int)));
+		copyMids(step);
 		barrier();  // barrier 2
 		step++;
 		jump = (1 << (step - 1));
